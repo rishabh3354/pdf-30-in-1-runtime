@@ -1,0 +1,99 @@
+name: pdf-30-in-1-runtime
+version: '2026.10.23'
+summary: Runtime for PDF 30-in-1 with LibreOffice, Tesseract and Ghostscript
+description: |
+  The shared runtime the PDF 30-in-1 snap runs on. It is installed automatically with PDF 30-in-1 and
+  isn't useful on its own.
+
+  It carries the desktop libraries, fonts, themes and locales the app needs on top of core22, plus the
+  programs some of its tools use: LibreOffice (Word, Excel and PowerPoint conversions), Tesseract (OCR)
+  and Ghostscript (PDF/A). Keeping them here makes PDF 30-in-1's own updates much smaller.
+grade: stable
+confinement: strict
+base: core22
+license: MPL-2.0 AND Apache-2.0 AND AGPL-3.0-or-later
+
+architectures:
+  - build-on: amd64
+
+slots:
+  pdf-30-in-1-runtime:
+    interface: content
+    read:
+      - /
+
+parts:
+  # what content-snap-core22-lite gives the other apps (desktop libraries, themes, locales, fonts),
+  # without fonts-noto-extra and the colour-emoji font, which PDF 30-in-1 doesn't need
+  platform:
+    plugin: nil
+    stage-packages:
+      - adwaita-icon-theme
+      - dmz-cursor-theme
+      - gnome-themes-standard
+      - libglib2.0-bin
+      - gsettings-desktop-schemas
+      - libdb5.3
+      - libgdk-pixbuf2.0-0
+      - libglib2.0-0
+      - libglu1-mesa
+      - libslang2
+      - libxkbcommon0
+      - light-themes
+      - locales-all
+      - qt5-gtk-platformtheme
+      - shared-mime-info
+      - fonts-ubuntu
+      - qt5-image-formats-plugins
+      - xdg-user-dirs
+      - samba-libs
+      - fontconfig
+      - fonts-noto-core
+      - fonts-noto-cjk
+      - fonts-dejavu-core
+      # Qt WebEngine (HTML to PDF) loads these at run time
+      - libnss3
+
+  helpers:
+    plugin: nil
+    stage-packages:
+      - tesseract-ocr
+      - tesseract-ocr-eng
+      - ghostscript
+      - libreoffice-core-nogui
+      - libreoffice-writer-nogui
+      - libreoffice-calc-nogui
+      - libreoffice-impress-nogui
+      # metric-compatible stand-ins for the fonts Office documents ask for, so layouts don't shift
+      - fonts-liberation2
+      - fonts-crosextra-carlito
+      - fonts-crosextra-caladea
+
+  cleanup:
+    after:
+      - platform
+      - helpers
+    plugin: nil
+    override-prime: |
+      # documentation and shell extras nothing reads
+      ( cd usr/share && rm -rf apport bash-completion bug doc doc-base lintian man pam-configs pkgconfig upstart zsh )
+      # LibreOffice reads fonts from its own folder too, so it finds them whatever fontconfig says
+      mkdir -p usr/lib/libreoffice/share/fonts/truetype
+      find usr/share/fonts -name '*.ttf' -path '*liberation*' -exec cp -n {} usr/lib/libreoffice/share/fonts/truetype/ \;
+      find usr/share/fonts -name '*.ttf' -path '*crosextra*' -exec cp -n {} usr/lib/libreoffice/share/fonts/truetype/ \;
+      # The store refuses links that point outside the snap. Ubuntu's LibreOffice links its settings
+      # (share/registry/main.xcd) to /etc, which its install script fills from share/.registry - a script
+      # snapcraft never runs. Put the real file in place of every such link.
+      find . -type l | while read -r link; do
+        target=$(readlink "$link")
+        case "$target" in /*) ;; *) continue ;; esac
+        name=$(basename "$link")
+        if [ -f ".$target" ]; then
+          cp --remove-destination ".$target" "$link"
+        elif [ -f "usr/lib/libreoffice/share/.registry/$name" ]; then
+          cp --remove-destination "usr/lib/libreoffice/share/.registry/$name" "$link"
+        else
+          echo "removing link to outside the snap: $link -> $target"
+          rm "$link"
+        fi
+      done

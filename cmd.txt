@@ -1,0 +1,27 @@
+# pdf-30-in-1-runtime - build and upload
+
+# only needed when the runtime changes (new packages, Ubuntu security updates) - not for every app release
+
+1. bump "version" in snap/snapcraft.yaml (a date is fine)
+2. build (LXD):
+cd /home/warlord/Documents/apps/pdf30in1/pdf-30-in-1-runtime
+snapcraft pack --use-lxd
+3. upload:
+snapcraft login
+snapcraft upload --release=stable pdf-30-in-1-runtime_<version>_amd64.snap
+
+
+# FIRST TIME
+- register the name: https://snapcraft.io/register  ->  pdf-30-in-1-runtime
+- upload the runtime BEFORE the first pdf-30-in-1 upload (the app names it as default-provider)
+- same publisher as pdf-30-in-1, so the content interface connects automatically
+
+
+# test both locally (sideloaded snaps don't connect on their own):
+sudo snap install --dangerous pdf-30-in-1-runtime_<version>_amd64.snap
+sudo snap install --dangerous pdf-30-in-1_<version>_amd64.snap
+sudo snap connect pdf-30-in-1:pdf-30-in-1-runtime pdf-30-in-1-runtime:pdf-30-in-1-runtime
+pdf-30-in-1
+
+# clean the LXD build container afterwards (it holds a few GB):
+snapcraft clean --use-lxd
