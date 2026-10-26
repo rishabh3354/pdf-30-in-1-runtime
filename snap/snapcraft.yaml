@@ -1,5 +1,5 @@
 name: pdf-30-in-1-runtime
-version: '2026.10.23'
+version: '2026.10.26'
 summary: Runtime for PDF 30-in-1 with LibreOffice, Tesseract and Ghostscript
 description: |
   The shared runtime the PDF 30-in-1 snap runs on. It is installed automatically with PDF 30-in-1 and isn't useful on its own.
@@ -57,10 +57,12 @@ parts:
       - tesseract-ocr
       - tesseract-ocr-eng
       - ghostscript
-      - libreoffice-core-nogui
-      - libreoffice-writer-nogui
-      - libreoffice-calc-nogui
-      - libreoffice-impress-nogui
+      # the regular packages, not the -nogui ones: Ubuntu 22.04's libreoffice-impress-nogui can't convert
+      # PowerPoint files at all (no PDF, even in a clean install); headless conversion never opens a window
+      - libreoffice-core
+      - libreoffice-writer
+      - libreoffice-calc
+      - libreoffice-impress
       # metric-compatible stand-ins for the fonts Office documents ask for, so layouts don't shift
       - fonts-liberation2
       - fonts-crosextra-carlito
@@ -97,3 +99,9 @@ parts:
           rm "$link"
         fi
       done
+      # Ubuntu's install script puts LibreOffice's settings in place (share/registry) from share/.registry; a snap
+      # never runs it, and without them LibreOffice hangs or stops at start-up
+      reg=usr/lib/libreoffice/share
+      mkdir -p $reg/registry/res
+      for f in $reg/.registry/*.xcd; do [ -f "$f" ] || continue; [ -f "$reg/registry/${f##*/}" ] || cp --remove-destination "$f" $reg/registry/; done
+      for f in $reg/.registry/res/*.xcd; do [ -f "$f" ] || continue; [ -f "$reg/registry/res/${f##*/}" ] || cp --remove-destination "$f" $reg/registry/res/; done
