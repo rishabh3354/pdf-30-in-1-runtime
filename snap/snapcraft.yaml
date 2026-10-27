@@ -83,6 +83,9 @@ parts:
       # Ubuntu's LibreOffice looks for its files in /usr/lib/libreoffice; in a snap they're next to the program
       # (upstream's own setting). PDF 30-in-1 also passes this when it starts LibreOffice, for older runtimes.
       sed -i 's|^BRAND_BASE_DIR=.*|BRAND_BASE_DIR=${ORIGIN}/..|' usr/lib/libreoffice/program/fundamentalrc
+      # LibreOffice 26 also reads its settings from /etc/libreoffice/registry - the host's /etc in a snap; they're in
+      # the runtime's own etc/, which share/registry links to
+      sed -i 's|file:///etc/libreoffice/registry|${BRAND_BASE_DIR}/share/registry|g' usr/lib/libreoffice/program/fundamentalrc
       # The store refuses links that point outside the snap. Ubuntu's LibreOffice links its settings
       # (share/registry/main.xcd) to /etc, which its install script fills from share/.registry - a script
       # snapcraft never runs. Put the real file in place of every such link.
